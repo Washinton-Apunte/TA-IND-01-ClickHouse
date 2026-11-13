@@ -1,0 +1,19 @@
+# Archivos auxiliares de LaTeX (el PDF final SÍ se sube al repositorio)
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.lof
+*.log
+*.lot
+*.out
+*.run.xml
+*.synctex.gz
+*.toc
+
+# Archivos del sistema
+Thumbs.db
+desktop.ini
+.DS_Store
