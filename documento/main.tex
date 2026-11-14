@@ -13,7 +13,7 @@
 
 \usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
-\usepackage[spanish,es-tabla,es-nodecimaldot]{babel}
+\usepackage[american,spanish,es-tabla,es-nodecimaldot,es-noquoting]{babel}
 \usepackage{lmodern}
 \usepackage[margin=2.5cm]{geometry}
 \usepackage{graphicx}
@@ -26,8 +26,12 @@
 \usepackage{listings}
 \lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single, columns=fullflexible}
 \usepackage{csquotes}
-\usepackage[backend=biber,style=ieee]{biblatex}
+% Estilo IEEE (biblatex-ieee v1.4g incluido en esta carpeta: ieee.bbx, ieee.cbx)
+\usepackage[backend=biber,style=ieee,autolang=other,maxcitenames=6]{biblatex}
 \addbibresource{referencias.bib}
+\renewcommand*{\bibfont}{\small}
+% Evita cortar un DOI justo después de un guion
+\setcounter{biburlbigbreakpenalty}{10000}
 \usepackage[titletoc,title]{appendix}
 \addto\captionsspanish{%
   \renewcommand{\appendixname}{Anexo}%
@@ -60,7 +64,7 @@
     \textbf{Estudiante:} & Washington German Apunte Pazmiño \\
     \textbf{Nivel y paralelo:} & Séptimo nivel, paralelo B \\
     \textbf{Docente:} & Gleiston Guerrero Ulloa, PhD \\
-    \textbf{Fecha:} & 15 de noviembre de 2026 \\
+    \textbf{Fecha:} & 14 de noviembre de 2026 \\
   \end{tabular}
   \par\vspace{1cm}
   \textbf{Repositorio:}\par
