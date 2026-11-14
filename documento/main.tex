@@ -119,8 +119,58 @@ ver en qué se diferencian en su funcionamiento y qué compromisos hace
 cada uno.
 
 \section{Arquitectura del sistema}
-% Componentes y cómo se comunican. Incluye tu diagrama (draw.io o TikZ,
-% hecho por ti) y cómo evolucionó desde el bosquejo a mano (Anexo A).
+Un clúster de ClickHouse se organiza en fragmentos (\emph{shards}) y
+réplicas. El fragmentado reparte una tabla en partes independientes
+según una expresión, y la replicación mantiene varias copias de cada
+fragmento para tener escalabilidad y disponibilidad~\cite{schulze2024}.
+Para el experimento armé en mi computadora, con Docker Compose, el
+clúster más pequeño que permite observar la replicación: un fragmento,
+dos réplicas y tres nodos de coordinación. La Figura~\ref{fig:arquitectura}
+muestra sus componentes.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\linewidth]{arquitectura.png}
+  \caption{Arquitectura del clúster de ClickHouse usado en el experimento
+  (diagrama propio elaborado en draw.io).}
+  \label{fig:arquitectura}
+\end{figure}
+
+\paragraph{Réplicas.} Los servidores \texttt{clickhouse-01} y
+\texttt{clickhouse-02} guardan copias idénticas de los datos para evitar
+pérdidas si uno falla. La tabla \texttt{ta01.eventos} usa el motor
+\texttt{ReplicatedMergeTree}, que coordina las réplicas con un esquema
+\emph{multi-master}: cualquiera de las dos puede recibir escrituras y la
+otra copia los cambios~\cite[p.~3732]{schulze2024}.
+
+\paragraph{ClickHouse Keeper.} Tres nodos de Keeper coordinan la
+sincronización entre las réplicas. Guardan el registro de replicación,
+es decir, la lista ordenada de operaciones que cada réplica debe
+aplicar, y usan el algoritmo de consenso Raft para ponerse de acuerdo
+aunque falle uno de ellos~\cite[p.~3736]{schulze2024}. Por eso son tres: Raft
+necesita una mayoría, y con tres nodos se puede perder uno sin dejar de
+funcionar. En mi clúster, el líder de Raft fue al inicio
+\texttt{clickhouse-keeper-03}.
+
+\paragraph{Tabla Distributed.} La tabla \texttt{ta01.eventos\_dist} no
+guarda datos: actúa como un enrutador que lee y escribe en todos los
+servidores del clúster. Es el motor que ClickHouse usa para el
+fragmentado transparente de los datos~\cite[p.~3732]{schulze2024}.
+
+\paragraph{Comunicación entre componentes.} El cliente envía consultas
+SQL a cada servidor por el protocolo nativo TCP (puerto 9000 dentro del
+contenedor). Los servidores mantienen una sesión con Keeper (puerto
+9181), y los nodos de Keeper se comunican entre sí con Raft (puerto
+9234). Cuando una réplica recibe una inserción, la anota en el registro
+de Keeper, y la otra réplica la descarga después de forma asíncrona.
+
+\paragraph{Evolución del diseño.} El primer bosquejo, dibujado a mano
+(Anexo~\ref{anexo:a}), era más simple y menos detallado: solo mostraba
+el cliente, las dos réplicas y los tres nodos de Keeper. El diagrama
+final integra los elementos que entendí al montar el clúster y hacer las
+pruebas: la tabla Distributed, los puertos de cada comunicación, el
+carácter asíncrono de la copia entre réplicas y el contenedor de Docker
+Compose que agrupa todo.
 
 \section{Análisis con los conceptos de la Unidad 1}
 
@@ -216,11 +266,38 @@ dos réplicas subió el tiempo promedio de una escritura de 18,83~ms a
 
 \begin{appendices}
 \section{Esquema inicial a mano}\label{anexo:a}
-% Fotografía del primer bosquejo con tu nombre y la fecha visibles.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.7\linewidth]{anexo-a-bosquejo.jpg}
+  \caption{Primer bosquejo a mano de la arquitectura (13/11/2026).}
+  \label{fig:bosquejo}
+\end{figure}
 
 \section{Capturas de lectura de las fuentes}\label{anexo:b}
-% Al menos 3 capturas con fragmentos subrayados o anotados y la página;
-% cada una debe corresponder a una cita del texto.
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{anexo-b-1-schulze-p3736.png}
+  \caption{Lectura de~\cite{schulze2024}, p.~3736: registro de
+  replicación en Keeper con Raft y consistencia eventual de las tablas
+  replicadas.}
+  \label{fig:lectura1}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{anexo-b-2-ferreira-p3.png}
+  \caption{Lectura de~\cite{ferreira2024}, p.~3: disponibilidad frente a
+  consistencia según el teorema CAP.}
+  \label{fig:lectura2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\linewidth]{anexo-b-3-calderon-p2377.png}
+  \caption{Lectura de~\cite{calderon2024}, p.~2377: índices, fragmentos
+  primarios y réplicas en Elasticsearch.}
+  \label{fig:lectura3}
+\end{figure}
 \end{appendices}
 
 \end{document}
