@@ -1,0 +1,90 @@
+﻿event_time	type	query_duration_ms	exception_code	exception	query
+2026-11-14 02:11:25	QueryFinish	3	0		/* ddl_entry=query-0000000000 */ CREATE DATABASE IF NOT EXISTS ta01 UUID \'68359d25-15af-498d-bcbc-e6214083e4a1\'
+2026-11-14 02:11:25	QueryFinish	103	0		CREATE DATABASE IF NOT EXISTS ta01 ON CLUSTER cluster_1S_2R
+2026-11-14 02:11:31	QueryFinish	141	0		/* ddl_entry=query-0000000001 */ CREATE TABLE IF NOT EXISTS ta01.eventos UUID \'68ff0816-93a9-43fb-ac3c-69d27713ac89\' (`id` UInt32, `nodo` String, `mensaje` String, `creado` DateTime DEFAULT now()) ENGINE = ReplicatedMergeTree(\'/clickhouse/tables/{shard}/{uuid}\', \'{replica}\') ORDER BY id
+2026-11-14 02:11:31	QueryFinish	204	0		CREATE TABLE IF NOT EXISTS ta01.eventos ON CLUSTER cluster_1S_2R (id UInt32, nodo String, mensaje String, creado DateTime DEFAULT now()) ENGINE = ReplicatedMergeTree(\'/clickhouse/tables/{shard}/{uuid}\', \'{replica}\') ORDER BY id
+2026-11-14 02:11:38	QueryFinish	3	0		/* ddl_entry=query-0000000002 */ CREATE TABLE IF NOT EXISTS ta01.eventos_dist UUID \'a17dc123-5968-40d9-9a17-2ac6c9040e0e\' (`id` UInt32, `nodo` String, `mensaje` String, `creado` DateTime DEFAULT now()) ENGINE = Distributed(\'cluster_1S_2R\', \'ta01\', \'eventos\', id)
+2026-11-14 02:11:38	QueryFinish	101	0		CREATE TABLE IF NOT EXISTS ta01.eventos_dist ON CLUSTER cluster_1S_2R AS ta01.eventos ENGINE = Distributed(\'cluster_1S_2R\', \'ta01\', \'eventos\', id)
+2026-11-14 02:11:46	QueryFinish	22	0		SELECT database, table, replica_name, is_leader, is_readonly, total_replicas, active_replicas FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 02:28:59	QueryFinish	75	0		INSERT INTO ta01.eventos (id, nodo, mensaje) FORMAT Values
+2026-11-14 02:28:59	QueryFinish	138	0		INSERT INTO ta01.eventos (id, nodo, mensaje) VALUES 
+2026-11-14 02:29:34	QueryFinish	47	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SELECT number + 2, \'clickhouse-01\', \'evento con fetches detenidos\' FROM numbers(5) FORMAT Native
+2026-11-14 02:29:34	QueryFinish	119	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SELECT number + 2, \'clickhouse-01\', \'evento con fetches detenidos\' FROM numbers(5)
+2026-11-14 02:30:06	QueryFinish	5	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:32:38	QueryFinish	2	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:46:28	QueryFinish	33	0		SELECT table, total_replicas, active_replicas FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 02:46:32	QueryFinish	49	0		INSERT INTO ta01.eventos (id, nodo, mensaje) FORMAT Values
+2026-11-14 02:46:32	QueryFinish	108	0		INSERT INTO ta01.eventos (id, nodo, mensaje) VALUES 
+2026-11-14 02:46:38	ExceptionWhileProcessing	21	285	Code: 285. DB::Exception: Number of alive replicas (1) is less than requested quorum (2/2). (TOO_FEW_LIVE_REPLICAS) (version 26.10.4.207 (official build))	INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS insert_quorum = 2, insert_quorum_timeout = 10000 FORMAT Values
+2026-11-14 02:46:38	ExceptionWhileProcessing	96	285	Code: 285. DB::Exception: Number of alive replicas (1) is less than requested quorum (2/2): While executing WaitForAsyncInsert. (TOO_FEW_LIVE_REPLICAS) (version 26.10.4.207 (official build))	INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS insert_quorum = 2, insert_quorum_timeout = 10000 VALUES 
+2026-11-14 02:46:45	QueryFinish	3	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:50:35	QueryFinish	23	0		SELECT table, total_replicas, active_replicas FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 03:00:13	QueryFinish	3	0		SELECT table, is_readonly, is_session_expired FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 03:00:18	QueryFinish	2	0		SELECT count() FROM ta01.eventos
+2026-11-14 03:02:23	ExceptionWhileProcessing	120022	159	Code: 159. DB::Exception: Wait for async insert timeout (120000 ms) exceeded: While executing WaitForAsyncInsert. (TIMEOUT_EXCEEDED) (version 26.10.4.207 (official build))	INSERT INTO ta01.eventos (id, nodo, mensaje) VALUES 
+2026-11-14 03:02:46	ExceptionWhileProcessing	142725	242	Code: 242. DB::Exception: Table is in readonly mode: replica_path=/clickhouse/tables/01/68ff0816-93a9-43fb-ac3c-69d27713ac89/replicas/01. (TABLE_IS_READ_ONLY) (version 26.10.4.207 (official build))	INSERT INTO ta01.eventos (id, nodo, mensaje) FORMAT Values
+2026-11-14 03:10:25	QueryFinish	3	0		SELECT table, is_readonly, is_session_expired FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 03:10:30	QueryFinish	23	0		INSERT INTO ta01.eventos (id, nodo, mensaje) FORMAT Values
+2026-11-14 03:10:30	QueryFinish	24	0		INSERT INTO ta01.eventos (id, nodo, mensaje) VALUES 
+2026-11-14 03:10:35	QueryFinish	5	0		SELECT id, mensaje FROM ta01.eventos WHERE id >= 9 ORDER BY id
+2026-11-14 03:10:55	QueryFinish	1	0		SELECT count() FROM ta01.eventos
+2026-11-14 03:39:28	QueryFinish	25	0		-- Prueba D (PACELC): 30 inserciones sin quorum y 30 con insert_quorum = 2, intercaladas.\n-- Cada INSERT lleva log_comment para medir su duracion despues en system.query_log.\n-- Se ejecuta con: docker exec clickhouse-01 clickhouse-client --queries-file /tmp/05_latencia.sql\n-- async_insert = 0: desde ClickHouse 26.3 las inserciones son asincronas por defecto; se desactivan para que la latencia medida dependa solo del quorum.\n\nINSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	70	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	14	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	61	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	14	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	75	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	62	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	94	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	73	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	69	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	22	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:28	QueryFinish	91	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:28	QueryFinish	21	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	79	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	95	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	16	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	62	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	70	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	15	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	72	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	18	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	67	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	84	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	73	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	19	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	69	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	19	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:29	QueryFinish	77	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:29	QueryFinish	18	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	81	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	18	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	100	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	71	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	19	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	68	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	17	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	70	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	15	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	65	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	89	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	19	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	90	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	22	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	75	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	34	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:30	QueryFinish	111	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:30	QueryFinish	15	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:31	QueryFinish	71	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 
+2026-11-14 03:39:31	QueryFinish	20	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 0, log_comment = \'sin_quorum\' VALUES 
+2026-11-14 03:39:31	QueryFinish	83	0		INSERT INTO ta01.eventos (id, nodo, mensaje) SETTINGS async_insert = 0, insert_quorum = 2, insert_quorum_timeout = 60000, log_comment = \'quorum_2\' VALUES 

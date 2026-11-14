@@ -1,0 +1,15 @@
+﻿event_time	type	query_duration_ms	exception_code	exception	query
+2026-11-14 02:11:25	QueryFinish	2	0		/* ddl_entry=query-0000000000 */ CREATE DATABASE IF NOT EXISTS ta01 UUID \'68359d25-15af-498d-bcbc-e6214083e4a1\'
+2026-11-14 02:11:31	QueryFinish	138	0		/* ddl_entry=query-0000000001 */ CREATE TABLE IF NOT EXISTS ta01.eventos UUID \'68ff0816-93a9-43fb-ac3c-69d27713ac89\' (`id` UInt32, `nodo` String, `mensaje` String, `creado` DateTime DEFAULT now()) ENGINE = ReplicatedMergeTree(\'/clickhouse/tables/{shard}/{uuid}\', \'{replica}\') ORDER BY id
+2026-11-14 02:11:38	QueryFinish	4	0		/* ddl_entry=query-0000000002 */ CREATE TABLE IF NOT EXISTS ta01.eventos_dist UUID \'a17dc123-5968-40d9-9a17-2ac6c9040e0e\' (`id` UInt32, `nodo` String, `mensaje` String, `creado` DateTime DEFAULT now()) ENGINE = Distributed(\'cluster_1S_2R\', \'ta01\', \'eventos\', id)
+2026-11-14 02:29:07	QueryFinish	21	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:29:14	QueryFinish	3	0		SYSTEM STOP FETCHES ta01.eventos
+2026-11-14 02:30:13	QueryFinish	1	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:30:20	QueryFinish	12	0		SELECT table, queue_size, inserts_in_queue, absolute_delay FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 02:32:26	QueryFinish	0	0		SYSTEM START FETCHES ta01.eventos
+2026-11-14 02:32:31	QueryFinish	22	0		SYSTEM SYNC REPLICA ta01.eventos
+2026-11-14 02:32:44	QueryFinish	1	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:32:50	QueryFinish	5	0		SELECT table, queue_size, inserts_in_queue, absolute_delay FROM system.replicas WHERE database = \'ta01\'
+2026-11-14 02:50:17	QueryFinish	18	0		SYSTEM SYNC REPLICA ta01.eventos
+2026-11-14 02:50:23	QueryFinish	1	0		SELECT count() FROM ta01.eventos
+2026-11-14 02:50:28	QueryFinish	6	0		SELECT id, mensaje FROM ta01.eventos WHERE id >= 7 ORDER BY id

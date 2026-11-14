@@ -1,0 +1,4 @@
+﻿    modo         inserciones   promedio_ms   mediana_ms   p95_ms   maximo_ms
+
+1.  quorum_2              30         77.23           73      100         111 
+2.  sin_quorum            30         18.83           19       25          34 
