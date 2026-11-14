@@ -1,0 +1,146 @@
+% =====================================================================
+% TA-IND-01 — Informe Académico Individual (Aplicaciones Distribuidas)
+% Análisis crítico de ClickHouse como sistema distribuido y su
+% comparación con Elasticsearch
+%
+% Compilar desde la carpeta documento/, en este orden:
+%   pdflatex main.tex
+%   biber main
+%   pdflatex main.tex
+%   pdflatex main.tex
+% =====================================================================
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[spanish,es-tabla,es-nodecimaldot]{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\graphicspath{{figuras/}{../capturas/}{../anexos/}}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{xcolor}
+\usepackage{listings}
+\lstset{basicstyle=\ttfamily\small, breaklines=true, frame=single, columns=fullflexible}
+\usepackage{csquotes}
+\usepackage[backend=biber,style=ieee]{biblatex}
+\addbibresource{referencias.bib}
+\usepackage[titletoc,title]{appendix}
+\addto\captionsspanish{%
+  \renewcommand{\appendixname}{Anexo}%
+  \renewcommand{\appendixtocname}{Anexos}%
+  \renewcommand{\appendixpagename}{Anexos}%
+}
+\usepackage[hidelinks]{hyperref}
+\usepackage{xurl}
+
+\begin{document}
+
+% ---------------------------------------------------------------------
+% CARÁTULA (verifica facultad, nivel y docente antes de entregar)
+% ---------------------------------------------------------------------
+\begin{titlepage}
+  \centering
+  {\large\bfseries UNIVERSIDAD TÉCNICA ESTATAL DE QUEVEDO\par}
+  \vspace{0.3cm}
+  {\large Facultad de Ciencias de la Computación y Diseño Digital\par}
+  \vspace{0.2cm}
+  {\large Carrera de Software\par}
+  \vspace{1.5cm}
+  {\Large\bfseries Aplicaciones Distribuidas\par}
+  \vspace{0.4cm}
+  {\large TA-IND-01 — Informe Académico Individual\par}
+  \vspace{1.5cm}
+  {\LARGE\bfseries Análisis crítico de ClickHouse como sistema distribuido y su comparación con Elasticsearch\par}
+  \vfill
+  \begin{tabular}{rl}
+    \textbf{Estudiante:} & Washington German Apunte Pazmiño \\
+    \textbf{Nivel y paralelo:} & Séptimo nivel, paralelo B \\
+    \textbf{Docente:} & Gleiston Guerrero Ulloa, PhD \\
+    \textbf{Fecha:} & 15 de noviembre de 2026 \\
+  \end{tabular}
+  \par\vspace{1cm}
+  \textbf{Repositorio:}\par
+  \url{https://github.com/Washinton-Apunte/TA-IND-01-ClickHouse}
+\end{titlepage}
+
+% ---------------------------------------------------------------------
+% RESUMEN (150 a 200 palabras). Escríbelo al final, con resultados.
+% ---------------------------------------------------------------------
+\pagenumbering{roman}
+\begin{abstract}
+% Sistema analizado, enfoque y conclusiones principales.
+\end{abstract}
+
+\tableofcontents
+\newpage
+\pagenumbering{arabic}
+
+% Mínimo 5 páginas de contenido (sin carátula, anexos ni referencias).
+
+\section{Introducción}
+% Qué problema resuelve ClickHouse, quién lo usa, a qué escala opera
+% y por qué lo elegiste.
+
+\section{Arquitectura del sistema}
+% Componentes y cómo se comunican. Incluye tu diagrama (draw.io o TikZ,
+% hecho por ti) y cómo evolucionó desde el bosquejo a mano (Anexo A).
+
+\section{Análisis con los conceptos de la Unidad 1}
+
+\subsection{Transparencias de distribución}
+% Acceso, ubicación, migración, reubicación, replicación, concurrencia
+% y fallos: cuáles ofrece ClickHouse, cuáles no y por qué.
+
+\subsection{CAP y PACELC}
+% Qué prioriza ante una partición de red y qué prioriza sin partición
+% (latencia frente a consistencia), con evidencia de la documentación
+% técnica o de artículos.
+
+\subsection{Modelos de comunicación}
+% Cliente-servidor, peer-to-peer o híbrido; sincrónica o asincrónica;
+% sockets, RPC o mensajería.
+
+\subsection{Tolerancia a fallos}
+% Qué fallos soporta, cómo los detecta y cómo se recupera (replicación,
+% consenso, reintentos), con al menos un incidente real documentado.
+
+\section{Experimentación propia}
+% Capturas de la ejecución (evidencia 1) y experimento (evidencia 2),
+% con su interpretación a la luz de la sección anterior.
+
+\section{Ejemplos del entorno del estudiante}
+% Al menos dos sistemas reales que usas o conoces de primera mano,
+% relacionados con un concepto de la unidad (evidencia 3).
+
+\section{Análisis comparativo}
+% Tabla ClickHouse frente a Elasticsearch con al menos cinco criterios
+% de la Unidad 1, y su discusión.
+
+\section{Postura crítica}
+% Fortalezas, limitaciones, compromisos (trade-offs) y contextos en los
+% que ClickHouse no sería la mejor opción. Todo argumentado y respaldado.
+
+\section{Conclusiones}
+% Afirmaciones concretas que salen del análisis y del experimento.
+
+\section*{Declaración de uso de inteligencia artificial}
+\addcontentsline{toc}{section}{Declaración de uso de inteligencia artificial}
+% Herramienta, versión, para qué se usó y cómo verificaste lo obtenido
+% (o declaración de que no se usó).
+
+\printbibliography[title={Referencias},heading=bibintoc]
+
+\begin{appendices}
+\section{Esquema inicial a mano}\label{anexo:a}
+% Fotografía del primer bosquejo con tu nombre y la fecha visibles.
+
+\section{Capturas de lectura de las fuentes}\label{anexo:b}
+% Al menos 3 capturas con fragmentos subrayados o anotados y la página;
+% cada una debe corresponder a una cita del texto.
+\end{appendices}
+
+\end{document}
