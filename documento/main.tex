@@ -76,7 +76,23 @@
 % ---------------------------------------------------------------------
 \pagenumbering{roman}
 \begin{abstract}
-% Sistema analizado, enfoque y conclusiones principales.
+Este informe analiza ClickHouse, una base de datos analítica de código
+abierto, como sistema distribuido, y lo compara con Elasticsearch.
+Apliqué los conceptos de la Unidad~1 (transparencias de distribución,
+teorema CAP y su extensión PACELC, modelos de comunicación y tolerancia
+a fallos) a partir de artículos científicos y de un experimento propio:
+un clúster con dos réplicas y tres nodos de ClickHouse Keeper, montado
+con Docker en mi computadora. En cuatro pruebas detuve la copia entre
+réplicas, apagué una réplica, dejé a Keeper sin mayoría y medí la
+latencia de escritura con y sin quórum. Los resultados muestran que, por
+defecto, ClickHouse prioriza la disponibilidad y la latencia: aceptó
+escrituras con una réplica caída, y una réplica llegó a responder con
+46~segundos de atraso. Exigir el quórum de dos réplicas garantizó la
+consistencia, pero multiplicó por 4,1 el tiempo promedio de escritura.
+Sin mayoría en Keeper, las tablas quedaron en solo lectura. Concluyo que
+ClickHouse oculta dónde están los datos, pero no cuándo se actualizan, y
+que es adecuado para analizar grandes volúmenes de datos, pero no para
+sistemas transaccionales.
 \end{abstract}
 
 \tableofcontents
@@ -565,20 +581,168 @@ dos réplicas subió el tiempo promedio de una escritura de 18,83~ms a
 77,23~ms.
 
 \section{Análisis comparativo}
-% Tabla ClickHouse frente a Elasticsearch con al menos cinco criterios
-% de la Unidad 1, y su discusión.
+
+Comparo ClickHouse con Elasticsearch porque los dos se usan para guardar
+y consultar grandes volúmenes de datos, como registros y métricas, pero
+resuelven la distribución de forma distinta. La
+Tabla~\ref{tab:comparacion} los compara con siete criterios de la
+Unidad~1.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Comparación de ClickHouse y Elasticsearch con criterios de la
+  Unidad 1.}
+  \label{tab:comparacion}
+  \small
+  \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{2.6cm} X X@{}}
+    \toprule
+    \textbf{Criterio} & \textbf{ClickHouse} & \textbf{Elasticsearch} \\
+    \midrule
+    Propósito y modelo de datos & Análisis (OLAP) sobre tablas guardadas
+      por columnas~\cite{schulze2024}. & Búsqueda e indexación de
+      documentos JSON; cada fragmento es un índice de
+      Lucene~\cite[p.~2377]{calderon2024}. \\
+    Fragmentado y transparencia de ubicación & Tablas repartidas en
+      fragmentos; la tabla Distributed los oculta, pero la topología se
+      define a mano~\cite[p.~3732]{schulze2024}. & Índices repartidos en
+      fragmentos primarios, cuyo número se fija al crear el índice; los
+      fragmentos se migran solos al crecer o reducirse el
+      clúster~\cite[pp.~2377, 2383]{calderon2024}. \\
+    Replicación & Multi-master: cualquier réplica acepta escrituras y las
+      demás copian los cambios de forma
+      asíncrona~\cite[p.~3736]{schulze2024}. & Primario y réplica: las
+      réplicas son copias de los fragmentos primarios y su número se
+      puede cambiar en cualquier
+      momento~\cite[pp.~2377, 2383]{calderon2024}. \\
+    Consistencia (CAP y PACELC) & Eventual por defecto; quórum opcional en
+      cada escritura (pruebas B y D). & Se equilibra consistencia y
+      rendimiento ajustando el factor de replicación y los
+      fragmentos~\cite[p.~2383]{calderon2024}; parámetros como el
+      intervalo de refresco influyen en cuándo los datos quedan
+      disponibles~\cite[p.~4]{haugerud2022}. \\
+    Coordinación y consenso & Servicio externo (Keeper) con Raft, que
+      necesita mayoría~\cite[p.~3736]{schulze2024}. & Nodos elegibles como
+      maestro dentro del propio clúster; se usa un número impar para
+      evitar la división del clúster (\emph{split-brain})~\cite[p.~2380]{calderon2024}. \\
+    Comunicación & Protocolo nativo sobre TCP (puerto 9000) y HTTP (puerto
+      8123). & API HTTP con documentos JSON (puerto
+      9200)~\cite[p.~4]{haugerud2022}. \\
+    Tolerancia a fallos & Soporta la caída de una réplica; sin mayoría en
+      Keeper, las tablas quedan en solo lectura (pruebas B y C). & Las
+      réplicas dan redundancia ante la caída de
+      nodos~\cite[p.~2377]{calderon2024}. \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+La diferencia más importante está en cómo replican y se coordinan. En
+ClickHouse cualquier réplica puede recibir escrituras, lo que favorece
+la disponibilidad, pero depende de un servicio externo de coordinación:
+como vi en la prueba~C, si Keeper pierde la mayoría, las escrituras se
+detienen. Elasticsearch coordina su clúster con sus propios nodos
+maestros y escribe primero en los fragmentos primarios. Además, reparte
+y mueve sus fragmentos automáticamente, mientras que en ClickHouse la
+distribución se decide al configurar el clúster.
+
+Para mí, lo más importante en una base de datos es el tiempo de
+respuesta, que sea confiable y tolerante a fallos, y su capacidad para
+almacenar y analizar datos. Con esos criterios, ClickHouse es la mejor
+opción para analizar grandes volúmenes de datos rápidamente, y
+Elasticsearch para buscar texto dentro de documentos. Debo aclarar que
+no medí el rendimiento de Elasticsearch: la comparación se basa en los
+artículos y en mis pruebas de ClickHouse. Calderon et al.\ reportan en
+su plataforma una latencia de indexación de 0,68~ms y de búsqueda de
+6,43~ms~\cite[p.~2383]{calderon2024}, pero esos valores no se pueden
+comparar directamente con los míos, porque se midieron en otro hardware,
+con otra carga y con otra configuración.
 
 \section{Postura crítica}
-% Fortalezas, limitaciones, compromisos (trade-offs) y contextos en los
-% que ClickHouse no sería la mejor opción. Todo argumentado y respaldado.
+
+\paragraph{Fortalezas.} ClickHouse está diseñado para analizar grandes
+volúmenes de datos con respuestas rápidas~\cite{schulze2024}, y lo
+comprobé en un proyecto con más de 3~millones de registros. Su
+replicación \emph{multi-master} evita que una sola réplica sea
+indispensable: en la prueba~B el clúster siguió aceptando escrituras con
+una réplica caída, y la réplica se recuperó sola al volver. Además, deja
+que cada escritura elija entre rapidez y consistencia con
+\texttt{insert\_quorum}, en lugar de imponer una sola opción.
+
+\paragraph{Limitaciones.} La primera es la consistencia eventual por
+defecto: una consulta puede devolver datos viejos sin avisar, como pasó
+en la prueba~A. La segunda es la dependencia de Keeper, que es un
+componente más que hay que operar y vigilar, y sin cuya mayoría no se
+puede escribir. La tercera es que no está pensado para modificar
+registros: el propio artículo indica que las actualizaciones y los
+borrados en una tabla deben ser poco frecuentes, y que las sentencias en
+general no son ACID~\cite[p.~3736]{schulze2024}.
+
+\paragraph{Compromisos (\emph{trade-offs}).} ClickHouse elige velocidad a
+cambio de garantías. Además de la replicación asíncrona, por defecto no
+fuerza la escritura inmediata a disco (\texttt{fsync}) de las partes
+nuevas, y acepta un pequeño riesgo de perder datos recientes si se va la
+luz~\cite[p.~3736]{schulze2024}. Es un compromiso razonable para
+análisis de registros o métricas, pero no para datos que no se pueden
+perder.
+
+\paragraph{Cuándo no lo usaría.} No usaría ClickHouse en un sistema que
+cambia muchas veces los mismos registros, como el saldo de una cuenta,
+las ventas de una tienda o el registro de notas del SGA. Ahí se necesita
+que cada cambio sea consistente y atómico, y una base de datos
+transaccional es la mejor opción. Tampoco lo elegiría para buscar texto
+libre, donde Elasticsearch es más adecuado, ni para volúmenes pequeños,
+donde montar un clúster con Keeper agrega complejidad sin beneficio.
+
+\paragraph{Cómo verificar estas propiedades.} La documentación describe
+cómo debería comportarse un sistema, pero solo provocando fallas se ve
+cómo se comporta realmente. La inyección de fallas, una técnica de la
+ingeniería del caos, se usa precisamente para medir el rendimiento y la
+confiabilidad de los sistemas en la nube y descubrir pronto las fallas
+críticas~\cite[p.~2389]{alsaidahmad2024}. Mis pruebas fueron una versión
+pequeña de esa idea, y me mostraron algo que no esperaba: el error
+\texttt{TIMEOUT\_EXCEEDED} en lugar de \texttt{TABLE\_IS\_READ\_ONLY}. El
+caso de Cloudflare muestra el otro lado del problema: en sistemas
+distribuidos, la monitorización, la detección de anomalías y la
+identificación de la causa raíz son difíciles por el comportamiento
+dinámico y las dependencias entre servicios~\cite[p.~1]{barata2026}, y
+una falla intermitente, que a veces aparece y a veces no, lo complica
+aún más.
 
 \section{Conclusiones}
-% Afirmaciones concretas que salen del análisis y del experimento.
+
+\begin{itemize}
+  \item Con su configuración por defecto, ClickHouse prioriza la
+    disponibilidad y la latencia (PA/EL). En mi clúster aceptó escrituras
+    con una réplica caída, y con la copia detenida una réplica llegó a
+    responder con 46~segundos de atraso.
+  \item La consistencia en ClickHouse es una elección por operación, y
+    tiene un costo medible. Exigir el quórum de dos réplicas rechazó una
+    escritura cuando faltaba una réplica y multiplicó por 4,1 el tiempo
+    promedio de escritura (de 18,83~ms a 77,23~ms).
+  \item El punto débil de su tolerancia a fallos es la coordinación. La
+    caída de una réplica no afectó el servicio, pero perder la mayoría de
+    Keeper dejó las tablas en solo lectura. La recuperación fue
+    automática, con un líder de Raft nuevo.
+  \item ClickHouse oculta dónde están los datos, pero no cuándo se
+    actualizan. Además, como mostró el incidente de Cloudflare, la
+    replicación no protege contra errores de configuración: los propaga
+    a todos los nodos.
+  \item Frente a Elasticsearch, ClickHouse es mejor opción para analizar
+    grandes volúmenes de datos con respuestas rápidas, y Elasticsearch
+    para buscar texto. Ninguno de los dos es adecuado para sistemas
+    transaccionales que modifican muchas veces los mismos registros.
+  \item Probar el sistema en mi propio entorno me permitió ver las
+    diferencias entre lo que dice la teoría y cómo responde realmente
+    ante los fallos.
+\end{itemize}
 
 \section*{Declaración de uso de inteligencia artificial}
 \addcontentsline{toc}{section}{Declaración de uso de inteligencia artificial}
-% Herramienta, versión, para qué se usó y cómo verificaste lo obtenido
-% (o declaración de que no se usó).
+
+En este trabajo usé Claude (Anthropic, modelo Claude Opus 5.5) como
+apoyo para guiarme en el uso de Git y Docker, preparar la plantilla de
+LaTeX, los comandos del experimento, buscar fuentes, y
+redactar los textos a partir de mis respuestas, corrigiendo su
+ortografía y gramática. Verifiqué cada referencia abriendo su DOI.
 
 \printbibliography[title={Referencias},heading=bibintoc]
 
