@@ -86,8 +86,37 @@
 % Mínimo 5 páginas de contenido (sin carátula, anexos ni referencias).
 
 \section{Introducción}
-% Qué problema resuelve ClickHouse, quién lo usa, a qué escala opera
-% y por qué lo elegiste.
+Las empresas guardan y analizan cada vez más datos: registros de
+servidores, métricas, eventos de usuarios. Necesitan consultarlos en
+tiempo casi real, con muchas consultas al mismo tiempo y sin que el costo
+se dispare. ClickHouse es una base de datos analítica (OLAP) de código
+abierto diseñada para hacer análisis de alto rendimiento sobre conjuntos
+de datos de escala de petabytes y con altas tasas de ingesta, y busca
+responder en menos de un segundo~\cite{schulze2024}. Guarda los datos
+por columnas, reparte las tablas en fragmentos (\emph{shards}) y las
+replica en varios nodos, por lo que es un sistema distribuido.
+
+ClickHouse se usa en producción en empresas de infraestructura de
+Internet. Un ejemplo es Cloudflare, que lo usa en los sistemas que
+generan la configuración de su servicio de gestión de bots. El 18 de
+noviembre de 2025, un cambio de permisos en su clúster de ClickHouse
+terminó provocando la peor caída de su red desde 2019, durante la cual
+no pudo entregar buena parte del tráfico de sus clientes~\cite{cloudflare2025}.
+Este incidente se analiza en la sección de tolerancia a fallos.
+
+Elegí ClickHouse porque ya lo usé en un proyecto de la asignatura de
+Construcción de Software, en el que trabajé con una tabla de más de
+3~millones de registros y las consultas respondieron rápido. Además, es
+libre y gratuito, no necesita licencia y puedo integrarlo con los
+sistemas que he desarrollado. Eso también me permitió levantar un
+clúster real en mi computadora y hacer mis propias pruebas.
+
+Lo comparo con Elasticsearch, un motor de búsqueda y análisis
+distribuido que también se usa para guardar y consultar grandes
+volúmenes de registros~\cite{calderon2024}. Los dos sistemas comparten
+casos de uso, pero resuelven la distribución de forma distinta, y quiero
+ver en qué se diferencian en su funcionamiento y qué compromisos hace
+cada uno.
 
 \section{Arquitectura del sistema}
 % Componentes y cómo se comunican. Incluye tu diagrama (draw.io o TikZ,
