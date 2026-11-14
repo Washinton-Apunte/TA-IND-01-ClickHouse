@@ -174,26 +174,344 @@ Compose que agrupa todo.
 
 \section{Análisis con los conceptos de la Unidad 1}
 
+En esta sección uso los conceptos de la unidad para explicar el
+comportamiento de ClickHouse. Me apoyo en los artículos citados y en lo
+que observé en mis cuatro pruebas, que se detallan en la
+sección~\ref{sec:experimento}.
+
 \subsection{Transparencias de distribución}
-% Acceso, ubicación, migración, reubicación, replicación, concurrencia
-% y fallos: cuáles ofrece ClickHouse, cuáles no y por qué.
+
+Una transparencia oculta al usuario algún aspecto de la distribución,
+de modo que el sistema se vea como si estuviera en una sola máquina. La
+Tabla~\ref{tab:transparencias} resume cuáles ofrece ClickHouse.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Transparencias de distribución en ClickHouse.}
+  \label{tab:transparencias}
+  \small
+  \begin{tabularx}{\linewidth}{@{}l l X@{}}
+    \toprule
+    \textbf{Transparencia} & \textbf{¿La ofrece?} & \textbf{Evidencia} \\
+    \midrule
+    Acceso & Sí & Se usa el mismo SQL para consultar una tabla local o la
+      tabla Distributed que abarca todo el clúster. \\
+    Ubicación & Parcial & La tabla Distributed oculta en qué fragmento está
+      cada fila~\cite[p.~3732]{schulze2024}, pero cada réplica tiene su
+      propia dirección y en mis pruebas elegí a qué servidor conectarme. \\
+    Migración y reubicación & No & La topología se define a mano en la
+      configuración del clúster, así que los datos no se mueven solos entre
+      fragmentos. Elasticsearch, en cambio, migra sus fragmentos
+      automáticamente~\cite[p.~2377]{calderon2024}. \\
+    Replicación & Parcial & El usuario no administra las copias, pero puede
+      leer datos viejos: en la prueba~A una réplica tenía 6 filas y la otra
+      solo 1. \\
+    Concurrencia & Sí & Cada consulta trabaja sobre una instantánea de las
+      partes de la tabla (aislamiento por instantáneas), por lo que las
+      inserciones paralelas no la afectan~\cite[p.~3736]{schulze2024}. \\
+    Fallos & Parcial & La caída de una réplica no se notó al leer
+      (prueba~B), pero sin mayoría en Keeper las escrituras fallaron
+      (prueba~C). \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+La transparencia que más se rompe es la de replicación. Mientras hacía
+las pruebas lo noté al leer los resultados: cada réplica respondía con
+un número de filas distinto. El propio artículo de ClickHouse lo
+reconoce: el registro de replicación se reproduce de forma asíncrona en
+los demás nodos, por lo que las tablas replicadas solo son
+eventualmente consistentes y un nodo puede leer temporalmente un estado
+antiguo de la tabla~\cite[p.~3736]{schulze2024}. Es decir, ClickHouse
+oculta \emph{dónde} están las copias, pero no oculta \emph{cuándo} se
+actualizan.
 
 \subsection{CAP y PACELC}
-% Qué prioriza ante una partición de red y qué prioriza sin partición
-% (latencia frente a consistencia), con evidencia de la documentación
-% técnica o de artículos.
+
+El teorema CAP plantea que, ante una partición de la red, un sistema
+distribuido tolerante a fallos debe elegir entre disponibilidad y
+consistencia. Una base de datos que prioriza la disponibilidad actualiza
+sus réplicas de forma asíncrona y acepta una consistencia eventual; una
+que prioriza la consistencia confirma la operación solo cuando todas las
+réplicas están actualizadas~\cite[p.~3]{ferreira2024}. PACELC agrega que,
+aun sin partición, el sistema debe elegir entre latencia y consistencia.
+
+\paragraph{Con partición (P: A o C).} Por defecto, ClickHouse prioriza la
+disponibilidad. En la prueba~B, con la réplica~2 apagada, el clúster
+siguió aceptando escrituras: la fila~7 se guardó en una sola réplica y
+la otra la recibió al volver. Pero el sistema permite pedir consistencia
+en cada operación: con \texttt{insert\_quorum = 2}, la escritura de la
+fila~8 se rechazó con el error 285 (\texttt{TOO\_FEW\_LIVE\_REPLICAS}),
+porque había una sola réplica viva y se pedía la confirmación de dos.
+El artículo de ClickHouse describe esta misma opción: la mayoría de las
+operaciones se pueden ejecutar de forma síncrona hasta que un quórum de
+nodos adopte el nuevo estado~\cite[p.~3736]{schulze2024}.
+
+La capa de coordinación, en cambio, siempre prioriza la consistencia.
+Keeper usa Raft y necesita una mayoría para aceptar cambios. En la
+prueba~C, al apagar dos de los tres nodos, ClickHouse no se arriesgó a
+guardar datos mal: la tabla pasó a solo lectura y la escritura nunca se
+completó, aunque las lecturas siguieron funcionando.
+
+\paragraph{Sin partición (E: L o C).} En condiciones normales, ClickHouse
+prioriza la latencia. En la prueba~D, una escritura sin quórum tardó en
+promedio 18,83~ms, y una que esperaba la confirmación de las dos
+réplicas tardó 77,23~ms, unas cuatro veces más. Las réplicas se toman su
+tiempo para copiar los datos, y esperar esa copia es exactamente lo que
+cuesta la consistencia.
+
+En resumen, con su configuración por defecto la capa de datos de
+ClickHouse se comporta como un sistema \textbf{PA/EL}: si una réplica se
+cae o queda aislada, las demás siguen aceptando lecturas y escrituras
+mientras mantengan contacto con la mayoría de Keeper, y sin partición
+prefiere responder rápido. Cada escritura puede pedir quórum y pasar a un
+comportamiento \textbf{PC/EC}, pagando el costo en latencia que medí. Su
+capa de coordinación, basada en Raft, es siempre CP: el lado de una
+partición que se queda sin mayoría deja de aceptar escrituras.
 
 \subsection{Modelos de comunicación}
-% Cliente-servidor, peer-to-peer o híbrido; sincrónica o asincrónica;
-% sockets, RPC o mensajería.
+
+ClickHouse combina varios modelos de comunicación:
+
+\begin{itemize}
+  \item \textbf{Cliente y servidor.} Me comunicaba con cada servidor
+    mediante una conexión al puerto que usaba: el protocolo nativo sobre
+    TCP en el puerto 9000 (también acepta HTTP en el 8123). Es una
+    comunicación síncrona de petición y respuesta: el cliente espera el
+    resultado de la consulta.
+  \item \textbf{Entre réplicas.} La copia de datos no fue al mismo tiempo,
+    sino después, de forma asíncrona. Cuando una réplica recibe una
+    inserción, la anota en el registro de Keeper, y las demás leen ese
+    registro y descargan la parte nueva desde la réplica que la
+    tiene~\cite[p.~3736]{schulze2024}. Es un intercambio entre pares
+    (\emph{multi-master}) coordinado por un servicio central, es decir,
+    un modelo híbrido.
+  \item \textbf{Entre los nodos de Keeper.} Se comunican con mensajes del
+    algoritmo de consenso Raft (puerto 9234 en mi clúster) para elegir un
+    líder y replicar el registro.
+  \item \textbf{Inserciones asíncronas.} ClickHouse puede acumular las
+    filas de varias inserciones pequeñas en un búfer y crear la parte
+    nueva cuando el búfer se llena o pasa un tiempo
+    límite~\cite[p.~3733]{schulze2024}. En mi servidor (versión
+    26.10.4.207) este modo estaba activado por defecto
+    (\texttt{async\_insert = 1}), como muestra la prueba~D.
+\end{itemize}
 
 \subsection{Tolerancia a fallos}
-% Qué fallos soporta, cómo los detecta y cómo se recupera (replicación,
-% consenso, reintentos), con al menos un incidente real documentado.
 
-\section{Experimentación propia}
-% Capturas de la ejecución (evidencia 1) y experimento (evidencia 2),
-% con su interpretación a la luz de la sección anterior.
+\paragraph{Caída de una réplica.} Es el fallo que ClickHouse mejor
+soporta. ClickHouse detecta qué réplicas están vivas mediante su sesión
+con Keeper: en la prueba~B, \texttt{active\_replicas} bajó de 2 a 1 en
+cuanto apagué la réplica. Al volver a encenderla, la réplica leyó el
+registro de replicación, descargó la fila que le faltaba y quedó igual a
+la otra sin que yo interviniera.
+
+\paragraph{Pérdida de la mayoría en Keeper.} Tres nodos de Keeper
+toleran la caída de uno. Con dos caídos, ClickHouse detectó que su
+sesión había expirado (\texttt{is\_session\_expired = 1}) y puso la tabla
+en solo lectura. La escritura no encontró a Keeper para registrarse:
+tardó en cargar, quedó esperando 120~segundos y terminó con el
+error 159 (\texttt{TIMEOUT\_EXCEEDED}). Al encender de nuevo los nodos,
+Raft eligió un líder nuevo (\texttt{keeper-01}, cuando antes era
+\texttt{keeper-03}) y la tabla volvió a aceptar escrituras sola.
+
+\paragraph{Reintentos sin duplicados.} Cuando una escritura termina por
+tiempo de espera, el cliente no sabe si se guardó o no. ClickHouse
+resuelve este problema guardando en Keeper un resumen (\emph{hash}) de
+las últimas partes insertadas e ignorando las que llegan repetidas, de
+modo que el cliente puede reenviar el mismo lote sin
+duplicarlo~\cite[p.~3736]{schulze2024}. En mi caso comprobé que la
+escritura que falló en la prueba~C no se guardó.
+
+\paragraph{Incidente real: Cloudflare, 18 de noviembre de 2025.} Cloudflare
+usa ClickHouse para generar un archivo de configuración de su servicio
+de gestión de bots. Ese día se aplicó un cambio de permisos que hizo
+que los usuarios también pudieran ver los metadatos de las tablas
+internas de la base de datos \texttt{r0}. Una consulta que no filtraba por nombre de base de datos
+empezó a devolver filas duplicadas, el archivo duplicó su tamaño y
+superó el límite de 200 características que aceptaba el sistema de
+bots, que falló y devolvió errores HTTP~5xx. Como el cambio se estaba
+aplicando de a poco en el clúster, cada cinco minutos se generaba un
+archivo bueno o uno malo según la parte del clúster que respondía la
+consulta, hasta que todos los nodos generaron el archivo erróneo~\cite{cloudflare2025}.
+
+La lección que saco es que un sistema distribuido, si se configura o se
+usa de forma inadecuada, deja de dar el servicio para el que fue
+diseñado. La replicación protege contra la caída de un servidor, pero no
+contra un error lógico: al contrario, lo propaga a todos los nodos.
+Además, el incidente fue una falla de transparencia: una consulta que
+asumía ver una sola copia lógica de los datos terminó viendo también las
+tablas internas de la distribución.
+
+\section{Experimentación propia}\label{sec:experimento}
+
+\subsection{Entorno y procedimiento}
+
+Monté el clúster en mi computadora (\texttt{WASHING-PC}, Windows con
+Docker Desktop) usando la receta oficial de ClickHouse para un fragmento
+con dos réplicas y tres nodos de Keeper, con las imágenes
+\texttt{clickhouse/clickhouse-server} (versión 26.10.4.207) y
+\texttt{clickhouse/clickhouse-keeper}. Todos los comandos, el script de
+la prueba de latencia y los resultados exportados de
+\texttt{system.query\_log} están en la carpeta \texttt{experimento} del
+repositorio. En cada captura se ven mi usuario, el nombre de mi equipo y
+la fecha y hora. La Tabla~\ref{tab:pruebas} resume las cuatro pruebas.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Resumen de las pruebas realizadas el 13/11/2026.}
+  \label{tab:pruebas}
+  \small
+  \begin{tabularx}{\linewidth}{@{}l X X l@{}}
+    \toprule
+    \textbf{Prueba} & \textbf{Qué hice} & \textbf{Qué observé} &
+      \textbf{Concepto} \\
+    \midrule
+    A & Detuve la copia hacia la réplica~2 e inserté 5 filas en la
+      réplica~1. & La réplica~1 tenía 6 filas y la réplica~2 solo 1, con
+      46~s de retraso. Al reanudar la copia, las dos quedaron con 6. &
+      Consistencia eventual \\
+    B & Apagué la réplica~2 e inserté sin quórum y con quórum de 2. &
+      Sin quórum se aceptó; con quórum se rechazó (error 285). Al volver,
+      la réplica~2 recibió la fila que le faltaba. & CAP y tolerancia a
+      fallos \\
+    C & Apagué 2 de los 3 nodos de Keeper. & La tabla quedó en solo
+      lectura; la lectura funcionó y la escritura falló a los 120~s
+      (error 159). Al volver, Raft eligió un líder nuevo. & Consenso
+      (CP) \\
+    D & Ejecuté 30 inserciones sin quórum y 30 con quórum de 2. & Con
+      quórum, la escritura tardó unas cuatro veces más
+      (Tabla~\ref{tab:latencia}). & PACELC \\
+    \bottomrule
+  \end{tabularx}
+\end{table}
+
+\subsection{Clúster en funcionamiento}
+
+La Figura~\ref{fig:contenedores} muestra los cinco contenedores en
+ejecución y la Figura~\ref{fig:keeper} el estado de los nodos de Keeper:
+uno actúa como líder y los otros dos como seguidores, lo que confirma
+que Raft eligió un líder al arrancar.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{01-contenedores.png}
+  \caption{Los cinco contenedores del clúster en ejecución.}
+  \label{fig:contenedores}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{03-keeper.png}
+  \caption{Estado de los tres nodos de Keeper: un líder y dos seguidores.}
+  \label{fig:keeper}
+\end{figure}
+
+\subsection{Prueba A: consistencia eventual}
+
+Con \texttt{SYSTEM STOP FETCHES} impedí que la réplica~2 descargara datos
+nuevos y luego inserté 5 filas en la réplica~1. Como muestra la
+Figura~\ref{fig:pruebaA}, las dos réplicas respondieron con datos
+distintos (6 y 1 filas), y la réplica~2 tenía una inserción pendiente
+en su cola, con 46~segundos de retraso. Al reanudar la copia, la
+réplica~2 se puso al día sola y las dos quedaron con 6 filas. Ambas
+siguieron respondiendo todo el tiempo, aunque una con datos viejos: es
+la consistencia eventual que describe el
+artículo~\cite[p.~3736]{schulze2024}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{05-prueba-a-retraso.png}
+  \caption{Prueba A: con la copia detenida, la réplica 1 tiene 6 filas y
+  la réplica 2 solo 1.}
+  \label{fig:pruebaA}
+\end{figure}
+
+\subsection{Prueba B: caída de una réplica}
+
+Apagué el contenedor \texttt{clickhouse-02}. La Figura~\ref{fig:pruebaB}
+muestra que la escritura normal se aceptó, mientras que la que exigía
+la confirmación de dos réplicas se rechazó con el error 285. Al encender
+de nuevo la réplica, esta tenía las 7 filas: recibió la fila~7, escrita
+mientras estaba apagada, y no la fila~8, que había sido rechazada. Esto
+muestra los dos lados de CAP en una misma prueba: el mismo clúster puede
+priorizar la disponibilidad o la consistencia según cómo se pida cada
+escritura.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{07-prueba-b-replica-caida.png}
+  \caption{Prueba B: con una réplica caída, la escritura con quórum de 2
+  se rechaza (error 285).}
+  \label{fig:pruebaB}
+\end{figure}
+
+\subsection{Prueba C: pérdida de la mayoría en Keeper}
+
+Apagué \texttt{clickhouse-keeper-02} y \texttt{clickhouse-keeper-03}
+(este último era el líder). Después de 40~segundos, la tabla estaba en
+solo lectura y con la sesión expirada (Figura~\ref{fig:pruebaC}). La
+lectura devolvió las 7 filas, pero la escritura quedó esperando y
+terminó con el error 159 después de 120~segundos. Yo esperaba el error
+\texttt{TABLE\_IS\_READ\_ONLY}, pero recibí un tiempo de espera agotado
+porque mi versión de ClickHouse hace las inserciones de forma asíncrona
+por defecto: la fila esperó en el búfer a que Keeper respondiera. Al
+encender de nuevo los dos nodos, Raft eligió como líder a
+\texttt{keeper-01} y la tabla volvió a aceptar escrituras. Comprobé que
+la escritura fallida no se guardó.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{09-prueba-c-sin-quorum.png}
+  \caption{Prueba C: sin mayoría en Keeper, la tabla queda en solo
+  lectura y la escritura no se completa.}
+  \label{fig:pruebaC}
+\end{figure}
+
+\subsection{Prueba D: costo de la consistencia en latencia}
+
+Ejecuté 30 inserciones sin quórum y 30 con \texttt{insert\_quorum = 2},
+intercaladas, y medí su duración en \texttt{system.query\_log}. Desactivé
+las inserciones asíncronas (\texttt{async\_insert = 0}) para que el
+tiempo dependiera solo del quórum y no del búfer. La
+Tabla~\ref{tab:latencia} y la Figura~\ref{fig:pruebaD} muestran el
+resultado.
+
+\begin{table}[htbp]
+  \centering
+  \caption{Duración de las inserciones (30 de cada tipo).}
+  \label{tab:latencia}
+  \begin{tabular}{@{}lrrrr@{}}
+    \toprule
+    \textbf{Modo} & \textbf{Promedio} & \textbf{Mediana} & \textbf{p95} &
+      \textbf{Máximo} \\
+    \midrule
+    Sin quórum & 18,83~ms & 19~ms & 25~ms & 34~ms \\
+    Quórum de 2 & 77,23~ms & 73~ms & 100~ms & 111~ms \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\linewidth]{11-prueba-d-latencia.png}
+  \caption{Prueba D: configuración por defecto de las inserciones y
+  latencia medida con y sin quórum.}
+  \label{fig:pruebaD}
+\end{figure}
+
+Exigir la confirmación de las dos réplicas multiplicó el tiempo
+promedio de escritura por 4,1. Este es el compromiso entre latencia y
+consistencia que plantea PACELC, medido en mi propio equipo.
+
+\subsection{Limitaciones}
+
+Todos los contenedores corrían en la misma computadora, por lo que la
+red entre réplicas era casi instantánea. En una red real, con servidores
+en distintos lugares, el costo del quórum sería mayor. Además, la
+muestra de la prueba~D es pequeña (30 inserciones por modo) y las
+pruebas A, B y C se hicieron una sola vez, así que los tiempos son
+ilustrativos y no un estudio de rendimiento.
 
 \section{Ejemplos del entorno del estudiante}
 Además del experimento, he observado como usuario el comportamiento de
