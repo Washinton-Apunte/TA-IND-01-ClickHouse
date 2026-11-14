@@ -117,8 +117,55 @@
 % con su interpretación a la luz de la sección anterior.
 
 \section{Ejemplos del entorno del estudiante}
-% Al menos dos sistemas reales que usas o conoces de primera mano,
-% relacionados con un concepto de la unidad (evidencia 3).
+Además del experimento, he observado como usuario el comportamiento de
+varios sistemas distribuidos que uso a diario. Los relaciono con los
+conceptos de la unidad.
+
+\subsection{SGA de la UTEQ: disponibilidad bajo carga}
+En una ocasión el SGA de la UTEQ no cargaba y no me permitía ingresar:
+la página se quedaba cargando y no pasaba de ahí. Además, suele ponerse
+lento en las matrículas, porque todos los estudiantes están obligados a
+ingresar para matricularse, aunque se organicen por grupos de niveles en
+diferentes horarios. Lo que más me ha pasado es que en las semanas
+finales del semestre el SGA está lento, porque docentes y estudiantes
+suben y califican tareas y registran las notas finales al mismo tiempo.
+
+Esto corresponde al modelo cliente-servidor: miles de clientes dependen
+del mismo servicio, y cuando la demanda supera su capacidad el sistema
+primero responde con más latencia y después deja de estar disponible.
+Desde el lado del usuario no se puede saber si el servidor cayó o solo
+está saturado, porque en los dos casos se ve lo mismo: una página que
+no termina de cargar. ClickHouse enfrenta este problema replicando los
+datos en varios nodos para repartir la carga y seguir respondiendo si
+uno falla~\cite{schulze2024}. Eso es lo que comprobé en mi prueba~B: con
+una réplica apagada, el clúster siguió aceptando lecturas y escrituras.
+
+\subsection{WhatsApp: comunicación asíncrona}
+A veces en WhatsApp no me llegan los mensajes completos: aparece el
+aviso de que se está esperando el mensaje, pero no se muestra lo que
+contiene. El mensaje aparece después, sin que yo haga nada.
+
+Esto se explica con la comunicación asíncrona por mensajería: el emisor
+y el receptor no necesitan estar conectados al mismo tiempo, porque el
+mensaje queda pendiente y se entrega cuando las dos partes pueden
+completar el intercambio. Mientras tanto, lo que veo en mi teléfono está
+incompleto, pero termina actualizándose. Es la misma idea de
+consistencia eventual que observé en mi prueba~A, donde la réplica~2
+mostró datos viejos durante 46~segundos y luego se puso al día sola.
+
+\subsection{Banca móvil: consistencia frente a latencia}
+En mi banca móvil, cuando uso datos móviles, la aplicación demora en
+cargar o en completar una transacción. Creo que se debe a la conexión,
+porque con wifi no me pasa.
+
+Aquí se ve el compromiso que describe PACELC: aunque no haya una falla,
+el sistema debe elegir entre responder rápido o responder con datos
+consistentes. Un banco prefiere que la transacción tarde antes que
+mostrarme un saldo equivocado, es decir, prioriza la consistencia aunque
+cueste latencia, sobre todo cuando la red es lenta~\cite{ferreira2024}.
+Es el mismo costo que medí en mi prueba~D: exigir la confirmación de las
+dos réplicas subió el tiempo promedio de una escritura de 18,83~ms a
+77,23~ms.
 
 \section{Análisis comparativo}
 % Tabla ClickHouse frente a Elasticsearch con al menos cinco criterios
