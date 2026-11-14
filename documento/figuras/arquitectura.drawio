@@ -1,0 +1,96 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="arquitectura-ta-ind-01" name="Arquitectura">
+    <mxGraphModel dx="1200" dy="820" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="800" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <mxCell id="docker" value="Docker Compose en WASHING-PC · red cluster_default · 5 contenedores" style="rounded=1;whiteSpace=wrap;html=1;dashed=1;fillColor=none;strokeColor=#666666;verticalAlign=bottom;align=left;spacingLeft=12;spacingBottom=8;fontSize=12;arcSize=3;" vertex="1" parent="1">
+          <mxGeometry x="40" y="140" width="1020" height="620" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="titulo" value="&lt;b&gt;Arquitectura del experimento&lt;/b&gt;&lt;br&gt;ClickHouse: 1 shard · 2 réplicas · 3 Keeper" style="text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="40" y="30" width="330" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="cliente" value="&lt;b&gt;Cliente&lt;/b&gt;&lt;br&gt;PowerShell → docker exec clickhouse-client" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;" vertex="1" parent="1">
+          <mxGeometry x="400" y="30" width="300" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="leyenda" value="&lt;b&gt;Leyenda&lt;/b&gt;&lt;br&gt;Línea continua: petición o coordinación&lt;br&gt;Línea punteada: copia asíncrona o enrutamiento" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#999999;fontSize=11;align=left;spacingLeft=8;" vertex="1" parent="1">
+          <mxGeometry x="740" y="30" width="320" height="70" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ch01" value="&lt;b&gt;clickhouse-01&lt;/b&gt; · Réplica 1 (shard 1)&lt;br&gt;127.0.0.1:8123 (HTTP) / 9000 (TCP)" style="swimlane;whiteSpace=wrap;html=1;startSize=44;fillColor=#fff2cc;strokeColor=#d6b656;swimlaneFillColor=#fffbe6;rounded=1;arcSize=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="80" y="190" width="380" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="ev01" value="&lt;b&gt;ta01.eventos&lt;/b&gt;&lt;br&gt;ReplicatedMergeTree (guarda los datos)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="ch01">
+          <mxGeometry x="30" y="64" width="320" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="di01" value="&lt;b&gt;ta01.eventos_dist&lt;/b&gt;&lt;br&gt;Distributed (enruta lecturas y escrituras)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="ch01">
+          <mxGeometry x="30" y="160" width="320" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="r01" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="ch01" source="di01" target="ev01">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="ch02" value="&lt;b&gt;clickhouse-02&lt;/b&gt; · Réplica 2 (shard 1)&lt;br&gt;127.0.0.1:8124 (HTTP) / 9001 (TCP)" style="swimlane;whiteSpace=wrap;html=1;startSize=44;fillColor=#fff2cc;strokeColor=#d6b656;swimlaneFillColor=#fffbe6;rounded=1;arcSize=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="640" y="190" width="380" height="240" as="geometry"/>
+        </mxCell>
+        <mxCell id="ev02" value="&lt;b&gt;ta01.eventos&lt;/b&gt;&lt;br&gt;ReplicatedMergeTree (guarda los datos)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="ch02">
+          <mxGeometry x="30" y="64" width="320" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="di02" value="&lt;b&gt;ta01.eventos_dist&lt;/b&gt;&lt;br&gt;Distributed (enruta lecturas y escrituras)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;fontSize=12;" vertex="1" parent="ch02">
+          <mxGeometry x="30" y="160" width="320" height="56" as="geometry"/>
+        </mxCell>
+        <mxCell id="r02" value="" style="endArrow=classic;html=1;dashed=1;strokeColor=#666666;" edge="1" parent="ch02" source="di02" target="ev02">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="rep" value="copia de partes&lt;br&gt;(asíncrona, multi-master)" style="endArrow=classic;startArrow=classic;html=1;dashed=1;strokeWidth=2;strokeColor=#b85450;fontSize=11;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="ev01" target="ev02">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="c1" value="SQL · TCP 9000" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#6c8ebf;" edge="1" parent="1" source="cliente" target="ch01">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="c2" value="SQL · TCP 9000" style="endArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#6c8ebf;" edge="1" parent="1" source="cliente" target="ch02">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="kp" value="&lt;b&gt;ClickHouse Keeper&lt;/b&gt; · coordinación con Raft (mayoría 2 de 3)" style="swimlane;whiteSpace=wrap;html=1;startSize=36;fillColor=#e1d5e7;strokeColor=#9673a6;swimlaneFillColor=#f7f1fa;rounded=1;arcSize=6;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="200" y="500" width="700" height="220" as="geometry"/>
+        </mxCell>
+        <mxCell id="k2" value="&lt;b&gt;keeper-02&lt;/b&gt;&lt;br&gt;cliente :9181 · Raft :9234" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="kp">
+          <mxGeometry x="265" y="46" width="170" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="k1" value="&lt;b&gt;keeper-01&lt;/b&gt;&lt;br&gt;cliente :9181 · Raft :9234" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="kp">
+          <mxGeometry x="50" y="128" width="170" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="k3" value="&lt;b&gt;keeper-03&lt;/b&gt;&lt;br&gt;cliente :9181 · Raft :9234" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="kp">
+          <mxGeometry x="480" y="128" width="170" height="72" as="geometry"/>
+        </mxCell>
+        <mxCell id="k12" value="" style="endArrow=none;html=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="kp" source="k1" target="k2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="k23" value="" style="endArrow=none;html=1;strokeColor=#9673a6;strokeWidth=2;" edge="1" parent="kp" source="k2" target="k3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="k13" value="Raft" style="endArrow=none;html=1;strokeColor=#9673a6;strokeWidth=2;fontSize=11;labelBackgroundColor=#f7f1fa;" edge="1" parent="kp" source="k1" target="k3">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="s1" value="sesión Keeper :9181" style="endArrow=classic;startArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.15;entryY=0;entryDx=0;entryDy=0;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#9673a6;" edge="1" parent="1" source="ch01" target="kp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="s2" value="sesión Keeper :9181" style="endArrow=classic;startArrow=classic;html=1;edgeStyle=orthogonalEdgeStyle;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.85;entryY=0;entryDx=0;entryDy=0;fontSize=11;labelBackgroundColor=#ffffff;strokeColor=#9673a6;" edge="1" parent="1" source="ch02" target="kp">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="nota" value="&lt;b&gt;Líder Raft observado&lt;/b&gt;&lt;br&gt;keeper-03 (13/11, 21:08)&lt;br&gt;→ keeper-01 tras la prueba C" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff9e6;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="52" y="560" width="140" height="110" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
