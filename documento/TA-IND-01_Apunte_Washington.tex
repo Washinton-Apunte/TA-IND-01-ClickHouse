@@ -4,10 +4,10 @@
 % comparación con Elasticsearch
 %
 % Compilar desde la carpeta documento/, en este orden:
-%   pdflatex main.tex
-%   biber main
-%   pdflatex main.tex
-%   pdflatex main.tex
+%   pdflatex TA-IND-01_Apunte_Washington.tex
+%   biber TA-IND-01_Apunte_Washington
+%   pdflatex TA-IND-01_Apunte_Washington.tex
+%   pdflatex TA-IND-01_Apunte_Washington.tex
 % =====================================================================
 \documentclass[12pt,a4paper]{article}
 
@@ -44,7 +44,7 @@
 \begin{document}
 
 % ---------------------------------------------------------------------
-% CARÁTULA (verifica facultad, nivel y docente antes de entregar)
+% CARÁTULA
 % ---------------------------------------------------------------------
 \begin{titlepage}
   \centering
@@ -72,7 +72,7 @@
 \end{titlepage}
 
 % ---------------------------------------------------------------------
-% RESUMEN (150 a 200 palabras). Escríbelo al final, con resultados.
+% RESUMEN
 % ---------------------------------------------------------------------
 \pagenumbering{roman}
 \begin{abstract}
@@ -99,7 +99,6 @@ sistemas transaccionales.
 \newpage
 \pagenumbering{arabic}
 
-% Mínimo 5 páginas de contenido (sin carátula, anexos ni referencias).
 
 \section{Introducción}
 Las empresas guardan y analizan cada vez más datos: registros de
@@ -215,10 +214,15 @@ Tabla~\ref{tab:transparencias} resume cuáles ofrece ClickHouse.
     Ubicación & Parcial & La tabla Distributed oculta en qué fragmento está
       cada fila~\cite[p.~3732]{schulze2024}, pero cada réplica tiene su
       propia dirección y en mis pruebas elegí a qué servidor conectarme. \\
-    Migración y reubicación & No & La topología se define a mano en la
-      configuración del clúster, así que los datos no se mueven solos entre
-      fragmentos. Elasticsearch, en cambio, migra sus fragmentos
+    Migración & No & La topología se define a mano en la configuración del
+      clúster, así que los datos no se mueven solos entre fragmentos.
+      Elasticsearch, en cambio, migra sus fragmentos
       automáticamente~\cite[p.~2377]{calderon2024}. \\
+    Reubicación & Parcial & Una réplica que vuelve o que se agrega se pone al
+      día copiando el estado de otra réplica~\cite[p.~3736]{schulze2024},
+      mientras las demás siguen atendiendo (prueba~B). Pero la lista de
+      servidores está fija en la configuración: si un servidor cambia de
+      dirección, ni el cliente ni la tabla Distributed lo detectan solos. \\
     Replicación & Parcial & El usuario no administra las copias, pero puede
       leer datos viejos: en la prueba~A una réplica tenía 6 filas y la otra
       solo 1. \\
@@ -311,6 +315,13 @@ ClickHouse combina varios modelos de comunicación:
     límite~\cite[p.~3733]{schulze2024}. En mi servidor (versión
     26.10.4.207) este modo estaba activado por defecto
     (\texttt{async\_insert = 1}), como muestra la prueba~D.
+  \item \textbf{Sockets, RPC y mensajería.} Toda la comunicación de mi
+    clúster usa sockets TCP: el protocolo nativo del cliente (puerto 9000),
+    la sesión con Keeper (9181) y Raft entre los nodos de Keeper (9234).
+    Cada componente usa su propio protocolo, sin un marco de RPC general.
+    ClickHouse tampoco es un sistema de mensajería, pero tiene motores de
+    tabla virtuales para intercambiar datos con sistemas de publicación y
+    suscripción como Kafka o RabbitMQ~\cite[p.~3732]{schulze2024}.
 \end{itemize}
 
 \subsection{Tolerancia a fallos}
