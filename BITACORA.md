@@ -1,25 +1,13 @@
 # Bitácora de trabajo — TA-IND-01
 
-Una entrada por cada día trabajado. La fecha de cada entrada debe coincidir con la de tus commits.
-
-## Plantilla (copia este bloque para cada sesión)
-
-### AAAA-MM-DD — Sesión N
-
-- **Hora de inicio y fin:**
-- **Qué hice:**
-- **Problema que encontré:**
-- **Cómo lo resolví:**
-- **Tiempo dedicado:**
-
----
+Registro de cada sesión de trabajo de la TA-IND-01.
 
 ### 2026-11-12 — Sesión 1
 
 - **Hora de inicio y fin:** 21:05 – 22:50
 - **Qué hice:** Analicé el enunciado de la TA-IND-01 y los temas que ya eligieron mis compañeros. Comparé varias opciones (Milvus, ClickHouse y Bitcoin) revisando cuántos artículos con DOI hay de cada una, y elegí analizar ClickHouse y compararlo con Elasticsearch. Creé el repositorio público en GitHub, lo cloné en mi PC, agregué la estructura inicial y completé el README.
 - **Problema que encontré:** Abrí PowerShell como administrador y quedé en la carpeta C:\WINDOWS\system32. También intenté editar el README directamente en GitHub, lo que habría causado un conflicto con la versión de mi PC.
-- **Cómo lo resolví:** Abrí PowerShell sin permisos de administrador y me moví a mi carpeta de usuario con cd $HOME. Cancelé la edición en GitHub y modifiqué el README en VS Code antes de hacer el commit.
+- **Cómo lo resolví:** Me moví a mi carpeta de usuario con cd $HOME, y desde ahí Git funcionó bien aunque PowerShell estuviera como administrador. Cancelé la edición en GitHub y modifiqué el README en VS Code antes de hacer el commit.
 - **Tiempo dedicado:** 1 hora y 45 minutos aproximadamente.
 
 
@@ -36,8 +24,8 @@ Una entrada por cada día trabajado. La fecha de cada entrada debe coincidir con
 
 ### 2026-11-14 — Sesión 3
 
-- **Hora de inicio y fin:** 10:54 – 13:07 y 20:02 – 21:40
-- **Qué hice:** Subí las referencias en formato IEEE y el estilo de biblatex, abrí cada DOI para verificar título, autores y año, y comprobé que todos los artículos fueran de acceso abierto. Resalté y anoté tres lecturas (Schulze, Ferreira y Calderon) para el Anexo B. Escribí mis ejemplos del entorno (SGA, WhatsApp y banca móvil) y mis respuestas para cada sección; con apoyo de IA (declarado en el informe) se redactaron y corrigieron la introducción, la arquitectura, el análisis de la Unidad 1, la experimentación, la comparación con Elasticsearch, la postura crítica, las conclusiones y el resumen. Agregué el diagrama final en draw.io, renombré el archivo principal con el código de la actividad, subí el PDF compilado y completé el README. Grabé el video de sustentación y lo subí a YouTube.
+- **Hora de inicio y fin:** 10:54 – 13:07 y 20:02 – 22:30
+- **Qué hice:** Subí las referencias en formato IEEE y el estilo de biblatex, abrí cada DOI para verificar título, autores y año, y comprobé que todos los artículos fueran de acceso abierto. Resalté y anoté tres lecturas (Schulze, Ferreira y Calderon) para el Anexo B. Escribí mis ejemplos del entorno (SGA, WhatsApp y banca móvil) y mis respuestas para cada sección; con apoyo de IA (declarado en el informe) se redactaron y corrigieron la introducción, la arquitectura, el análisis de la Unidad 1, la experimentación, la comparación con Elasticsearch, la postura crítica, las conclusiones y el resumen. Agregué el diagrama final en draw.io, renombré el archivo principal con el código de la actividad, subí el PDF compilado y completé el README. Grabé el video de sustentación y lo subí a YouTube. Al final hice una revisión completa contra la rúbrica: separé las transparencias de migración y reubicación, agregué la clasificación de sockets, RPC y mensajería, actualicé la guía del experimento con los comandos exactos que ejecuté y sus resultados, y quité comentarios de plantilla del README, de la bitácora y del .tex.
 - **Problema que encontré:** El diagrama no se guardó en la carpeta documento/figuras y el primer commit no se hizo. Mi primera grabación del video duró más de 10 minutos, y el enunciado pide entre 3 y 5.
 - **Cómo lo resolví:** Exporté de nuevo el diagrama, lo copié a la carpeta correcta y lo subí en otro commit. Recorté las pausas del video y lo volví a grabar más corto, siguiendo los puntos clave de cada escena.
-- **Tiempo dedicado:** 3 horas y 50 minutos aproximadamente.
+- **Tiempo dedicado:** 4 horas y 40 minutos aproximadamente.
