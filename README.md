@@ -19,7 +19,6 @@ El informe compilado está en [`documento/TA-IND-01_Apunte_Washington.pdf`](docu
 
 ## Video de sustentación
 
-<!-- Pega aquí el enlace (YouTube no listado o Google Drive con acceso abierto). -->
 Enlace: https://youtu.be/gcq7VpksC-M
 
 ## Estructura del repositorio
