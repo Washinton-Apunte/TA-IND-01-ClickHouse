@@ -32,3 +32,12 @@ Una entrada por cada día trabajado. La fecha de cada entrada debe coincidir con
 - **Problema que encontré:** En la prueba C esperaba el error TABLE_IS_READ_ONLY, pero la inserción se quedó esperando 2 minutos y terminó con TIMEOUT_EXCEEDED (159). Además, el experimento no encontraba el zip en Descargas, una captura se subió sin la otra, y la ventana de PowerShell quedó en modo "Seleccionar" y no mostraba la salida.
 - **Cómo lo resolví:** Descubrí que desde la versión 26.3 ClickHouse hace las inserciones asíncronas por defecto (mi versión es la 26.10.4.207), y por eso esperó en la cola en vez de fallar al instante. Para la prueba D desactivé las inserciones asíncronas (async_insert = 0) y así medí solo el efecto del quórum. Volví a descargar el zip, subí la captura que faltaba en otro commit y salí del modo selección con Esc.
 - **Tiempo dedicado:** 3 horas y 30 minutos aproximadamente.
+---
+
+### 2026-11-14 — Sesión 3
+
+- **Hora de inicio y fin:** 10:54 – 13:07 y 20:02 – 21:40
+- **Qué hice:** Subí las referencias en formato IEEE y el estilo de biblatex, abrí cada DOI para verificar título, autores y año, y comprobé que todos los artículos fueran de acceso abierto. Resalté y anoté tres lecturas (Schulze, Ferreira y Calderon) para el Anexo B. Escribí mis ejemplos del entorno (SGA, WhatsApp y banca móvil) y mis respuestas para cada sección; con apoyo de IA (declarado en el informe) se redactaron y corrigieron la introducción, la arquitectura, el análisis de la Unidad 1, la experimentación, la comparación con Elasticsearch, la postura crítica, las conclusiones y el resumen. Agregué el diagrama final en draw.io, renombré el archivo principal con el código de la actividad, subí el PDF compilado y completé el README. Grabé el video de sustentación y lo subí a YouTube.
+- **Problema que encontré:** El diagrama no se guardó en la carpeta documento/figuras y el primer commit no se hizo. Mi primera grabación del video duró más de 10 minutos, y el enunciado pide entre 3 y 5.
+- **Cómo lo resolví:** Exporté de nuevo el diagrama, lo copié a la carpeta correcta y lo subí en otro commit. Recorté las pausas del video y lo volví a grabar más corto, siguiendo los puntos clave de cada escena.
+- **Tiempo dedicado:** 3 horas y 50 minutos aproximadamente.
